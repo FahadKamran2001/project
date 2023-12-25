@@ -1,0 +1,4 @@
+TASKS ACCOMPLISHED BY EACH MEMBER
+1. i200983 (Fahad Kamran) - DVC Setup, Requirements.txt, tasks.txt, python_libraries_installation.yaml
+2. i200977 (Ahmed Munir) - 
+3. i190600 (Atif Munir) -
