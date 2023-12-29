@@ -45,5 +45,7 @@ jobs:
     - name: Push data back to gdrive
       run: 'dvc push -r storage'
     - name: Execute Mlflow training and Data Gather
-      run: python main.py
+      run: |
+        mlflow ui --backend-store-uri ./mlruns --port 5000 --host 0.0.0.0
+        python main.py
       
