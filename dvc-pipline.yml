@@ -1,0 +1,17 @@
+stages:
+  fetch_file:
+    cmd: dvc pull -r myremote
+    deps: []
+    outs: []
+
+  generate_data:
+    cmd: python random_data.py
+    deps:
+      - random_data.py
+    outs: []
+
+  upload_file:
+    cmd: dvc push -r myremote
+    deps:
+      - dummy_sensor_data.csv
+    outs: []
