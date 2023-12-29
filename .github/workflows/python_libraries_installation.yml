@@ -43,7 +43,7 @@ jobs:
         python random_data.py
         dvc add dummy_sensor_data.csv
     - name: Push data back to gdrive
-      run: 'dvc push -r myremote'
+      run: 'dvc push -r storage'
     - name: Execute Mlflow training and Data Gather
       run: python main.py
       
