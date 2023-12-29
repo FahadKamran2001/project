@@ -21,14 +21,24 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-    - name: dvc setup
+    - uses: iterative/setup-dvc@v1
+    - name: Install DVC
+      env:
+        GDRIVE_CREDENTIALS_DATA: ${{ secrets.GDRIVE_API }}
       run: |
+        pip install dvc[gdrive] pandas
         dvc --version
-        dvc remote add -f myremote gdrive://1ZJZmaYaA77kOh0IdPIOzcRQDEGwGnCJO
+        dvc remote add -f myremote gdrive://{{secrets.GDRIVE_LINK}}
+        dvc remote modify myremote gdrive_client_id '${{secrets.GDRIVE_API}}'
+    - name: Pull Data from DVC
+      run: |
         dvc pull
-        python random_data.py
-        dvc add data/dummy_sensor_data.csv
-        'dvc push -r myremote'
+    - name: Add More Data to DVC    
+      run: |
+        python generate_data.py
+        dvc add dummy_sensor_data.csv
+    - name: Push data back to gdrive
+      run: 'dvc push -r myremote'
     - name: Execute Mlflow training and Data Gather
       run: python main.py
       
