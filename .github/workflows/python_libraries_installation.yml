@@ -40,7 +40,7 @@ jobs:
         dvc pull
     - name: Add More Data to DVC    
       run: |
-        python generate_data.py
+        python random_data.py
         dvc add dummy_sensor_data.csv
     - name: Push data back to gdrive
       run: 'dvc push -r myremote'
