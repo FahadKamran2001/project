@@ -46,6 +46,6 @@ jobs:
       run: 'dvc push -r storage'
     - name: Execute Mlflow training and Data Gather
       run: |
-        mlflow ui --backend-store-uri ./mlruns --port 5000 --host 0.0.0.0
+        nohup mlflow ui --backend-store-uri ./mlruns --port 5000 --host fahadkamran.xyz &
         python main.py
       
