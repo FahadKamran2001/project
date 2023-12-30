@@ -117,8 +117,7 @@ def start():
             sk_model=best_model,
             artifact_path="sklearn-model",
             signature= signature,
-            registered_model_name="random-forest-best",
-            save_model=True
+            registered_model_name="random-forest-best"
         )
         print("Model deployed successfully!")
     else:
