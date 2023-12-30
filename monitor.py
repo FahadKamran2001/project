@@ -17,7 +17,7 @@ def fetch_model():
     model = pyfunc.load_model(f"models:/{model_name}/{latest_model_version}")
     return model
 
-def fetch_data(data_file_path = 'data/dummy_sensor_data.csv'): 
+def fetch_data(data_file_path = 'dummy_sensor_data.csv'): 
     data = pd.read_csv(data_file_path)
     data = preprocess_data(data)
     return data
@@ -50,9 +50,9 @@ def monitor_model():
     print("Model error metrics: MAE:[{}], R2:[{}], MSE:[{}]".format(mae, r2, mse))
     save_metrics(mae, r2, mse)
     # Compare error metrics with threshold
-    if mae > 16 or mse > 500:
-        print("Model performance degraded! Retraining model.")
-        subprocess.call(['cat', 'train.yaml'])
+    #if mae > 16 or mse > 500:
+    print("Model performance degraded! Retraining model.")
+    subprocess.call(['cat', 'train.yaml'])
     
 if __name__ == '__main__':
     monitor_model()
