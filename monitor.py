@@ -52,8 +52,7 @@ def monitor_model():
     # Compare error metrics with threshold
     #if mae > 16 or mse > 500:
     print("Model performance degraded! Retraining model.")
-    condition_result=True
-    print(f"::set-output name=condition_result::{str(condition_result).lower()}")
+    print(f"::set-output name=condition_result::{str("true").lower()}")
 
     
 if __name__ == '__main__':
