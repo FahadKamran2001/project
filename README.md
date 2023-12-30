@@ -1,5 +1,5 @@
 # Project README
-
+![Model Status](https://github.com/FahadKamran2001/project/actions/workflows/project-execution.yml/badge.svg)
 ## DVC Setup
 
 ### Install DVC on Windows
