@@ -1,0 +1,665 @@
+********************************************************************************************************************************
+DVC SETUP
+********************************************************************************************************************************
+** install dvc windows bit version from dvc website, run setup and give it all its permissions**
+** add dvc.exe to path variables which is in environment variables **
+** restart computer **
+** install dvc vscode extension from dvc website**
+** go to the directory of the project where you want to work in and open vscode there, make sure there folder is a git repository that was made by git or github desktop (can be installed from github)**
+** from there open vscode terminal and run the following command**
+dvc init
+** press F1 and search the following**
+DVC: show setup
+** click on it**
+** if it has a warning sign in the top left next to DVC logo (but says a version number) or it has a green tick your dvc is installed in the very least**
+** run the data generator file "random_data_py" to get data file "dummy_sensor_data.csv" **
+python random_data.py
+** now on your google drive make a public folder, use the identifier from the url **
+eg: https://drive.google.com/drive/folders/1ZJZmaYaA77kOh0IdPIO************ then 1ZJZmaYaA77kOh0IdPIO************ is the identifier
+** before next step if your 'dummy_sensor_data.csv' is being tracked by git then we need to remove it **
+** to do that we will enter the following command **
+git rm -r --cached 'dummy_sensor_data.csv'
+git commit -m "stop tracking dummy_sensor_data.csv"
+** we then add 'dummy_sensor_data.csv' to dvc, it should work properly if it isnt being tracked by git **
+dvc add dummy_sensor_data.csv
+** it should add a .dvc folder, .dvcignore file and dummy_sensor_data.csv.dvc file **
+** in the .dvc folder there should be a config file, in it enter the following code , note we will use the identifier of the google drive public folder we made previously **
+[core]
+	remote = storage
+['remote "storage"']
+	url = gdrive://1ZJZmaYaA77kOh0IdPIO************
+** save the file**
+**go to source control and commit **
+** now go to terminal and write the following command **
+dvc push
+** it will open the authentication page for dvc to connect to your gdrive**
+** check back on your terminal it should be showing that 1 file pushed (your 'dummy_sensor_data.csv' file) **
+** press f1 again and open the DVC: show setup again, scroll down to Remotes, you should now see a green tick next to it **
+** now you have your dvc properly setup **
+** Note: Don't be concerned with the DVC failing 4 other points in the setup, the only ones we are concerned with are Remotes and DVC itself **
+** the Monitor and Experiments sections we will be implementing with MLflow so no need for their setup, we only need dvc for out dataset version control **
+** next publish repository to github **
+
+
+********************************************************************************************************************************
+Requirements.txt
+********************************************************************************************************************************
+pandas==2.1.4
+numpy==1.26.2
+jinja2==3.1.2
+flask==3.0.0
+mlflow==2.9.2
+scikit-learn==1.3.2
+xgboost==2.0.3
+dvc[gdrive]
+
+
+********************************************************************************************************************************
+project-execution.yml (github workflow/action)
+********************************************************************************************************************************
+#a step by step process of building and execution of model
+
+name: Python Application
+
+on:
+  push:
+    branches: [ "main","i200983","i200977","i190600" ]
+  pull_request:
+    branches: [ "main","i200983","i200977","i190600" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+    - name: Setup DVC
+      uses: iterative/setup-dvc@v1
+    
+    - name: Setup Google Drive credentials
+      env:
+        GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+        GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_LINK}}
+        GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_API }}
+      run: |
+        echo "$GDRIVE_SERVICE_ACCOUNT_JSON" > dvc-remote-connections.json
+        dvc remote modify storage gdrive_client_id $GDRIVE_CLIENT_ID
+        dvc remote modify storage gdrive_client_secret $GDRIVE_CLIENT_SECRET
+        dvc remote modify storage gdrive_service_account_json_file_path dvc-remote-connections.json
+
+    - name: Pull Data from DVC
+      run: |
+        dvc pull
+    - name: Add More Data to DVC    
+      run: |
+        python random_data.py
+        dvc add dummy_sensor_data.csv
+    - name: Push data back to gdrive
+      run: 'dvc push -r storage'
+    - name: Concept Drift Monitoring (Re-train if necessary)
+      run: |
+        export MLFLOW_TRACKING_URI=${{secrets.MLFLOW_TRACKING_URI}}
+        export MLFLOW_TRACKING_USERNAME=${{secrets.MLFLOW_TRACKING_USERNAME}}
+        export MLFLOW_TRACKING_PASSWORD=${{secrets.MLFLOW_TRACKING_PASSWORD}}
+        condition_result=$(python monitor.py)
+        echo "condition_result=$condition_result" >> $GITHUB_ENV
+    - name: Conditionally Run - Execute Mlflow training and Data Gather
+      if: ${{ env.condition_result == 'true' }}
+      run: |
+        export MLFLOW_TRACKING_URI=${{secrets.MLFLOW_TRACKING_URI}}
+        export MLFLOW_TRACKING_USERNAME=${{secrets.MLFLOW_TRACKING_USERNAME}}
+        export MLFLOW_TRACKING_PASSWORD=${{secrets.MLFLOW_TRACKING_PASSWORD}}
+        python main.py
+    - name: Conditionally Run - Login to Docker
+      if: ${{ env.condition_result == 'true' }}
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Conditionally Run - Build Docker Image
+      if: ${{ env.condition_result == 'true' }}
+      run: docker build . --file Dockerfile --tag fahadkamran2001/random-forest-app:latest
+    - name: Conditionally Run - Push Docker Image
+      if: ${{ env.condition_result == 'true' }}
+      run: |
+        docker login -u fahadkamran2001 -p ${{ secrets.DOCKER_PASSWORD }}
+        docker push fahadkamran2001/random-forest-app:latest
+
+
+      
+
+
+********************************************************************************************************************************
+dvc-pipeline.yml (in same directory as README.md file not in workflows directory)
+********************************************************************************************************************************
+##below is a pipeline for dvc to create and push a new dataset version of 'dummy_sensor_data.csv'
+stages:
+  fetch_file:
+    cmd: dvc pull -r myremote
+    deps: []
+    outs: []
+
+  generate_data:
+    cmd: python random_data.py
+    deps:
+      - random_data.py
+    outs: []
+
+  upload_file:
+    cmd: dvc push -r myremote
+    deps:
+      - dummy_sensor_data.csv
+    outs: []
+
+
+********************************************************************************************************************************
+preprocess.py
+********************************************************************************************************************************
+## the preprocess function to be called when the data needs to be processed after being fetched from csv file ##
+stages:
+  fetch_file:
+    cmd: dvc pull -r myremote
+    deps: []
+    outs: []
+
+  generate_data:
+    cmd: python random_data.py
+    deps:
+      - random_data.py
+    outs: []
+
+  upload_file:
+    cmd: dvc push -r myremote
+    deps:
+      - dummy_sensor_data.csv
+    outs: []
+
+
+********************************************************************************************************************************
+tasks.txt (a note file of the implementation done by each member [I have only added my parts so far, members will add their])
+********************************************************************************************************************************
+TASKS ACCOMPLISHED BY EACH MEMBER
+1. i200983 (Fahad Kamran) - DVC Setup, Requirements.txt, tasks.txt, project-execution.yaml, dvc-pipeline.yaml, preprocess.py, main.py
+2. i200977 (Ahmed Munir) - Flask application for model, model deployment using Docker Container
+3. i190600 (Atif Munir) - Concept Drift Monitoring (monitor.py)
+
+
+********************************************************************************************************************************
+google auto-authentication for credential api
+********************************************************************************************************************************
+1. go to https://console.developers.google.com/
+2. create project for DVC remote connections
+3. go to https://console.cloud.google.com/marketplace/product/google/drive.googleapis.com
+4. enable google drive api
+5. go to https://console.cloud.google.com/apis/credentials
+6. select google-drive-api in api selection
+7. select for service account (application data choice)
+8. click next
+9. in service id enter 'gdrive-api'
+10. in description add 'Allows access to the google drive api'
+11. click 'create and continue' button
+12. click continue add as no need to grant service account access to project
+13. click done as again no need to user access to this account
+14. go to https://console.cloud.google.com/iam-admin/serviceaccounts
+15. click on the project you just created
+16. click on the service account you just created
+17. keys --> add key --> create new key
+18. select json as key type
+19. click create
+20. go to IAM in side bar
+21. go to service accounts in side bar
+22. Copy and paste the email associated to this service account. It should have a form service_account_name@project_id.iam.gserviceaccount.com mine is (gdrive-api@project-409621.iam.gserviceaccount.com)
+23. Move to Google Drive and share the drive folder where the DVC repo will live with the service account email defined in the last step.
+24. open repository locally in your vscode at main branch
+25. see workflow for updated on dvc
+26. go to repository -> sections -> actions secret and add contents of key.json to secret (copy paste) (key is valid for a limited time)
+27. name it anything ( i named it GDRIVE_API)
+28. 1wZ-olrk13UHtLDUYmNI3************ secret as GDRIVE LINK
+29. gdrive-api@project-409621.iam.gserviceaccount.com as GDRIVE_CLIENT_ID
+
+********************************************************************************************************************************
+MLFlow remote server setup for github
+********************************************************************************************************************************
+1. go to dagshub
+2. login with github account
+3. click create+ button next to the profile icon, click create new repository, then click connect to repository, then choose github
+4. authorise dagshub (all repository access)
+5. choose the repository and click connect
+6. click remote button, go to experiments and copy mlflow tracking uri ( the "using mlflow tracking" secrets which is the 2nd option shown)
+
+MLFLOW_TRACKING_URI=https://dagshub.com/FahadKamran2001/project.mlflow \
+MLFLOW_TRACKING_USERNAME=FahadKamran2001 \
+MLFLOW_TRACKING_PASSWORD=df259bdd7fb874eb28fc3d5745c2************ \
+python script.py
+
+7. add these secrets to github actions secrets these are used in the 'project-execution.yaml' (see project-execution.yaml for its usage)
+
+export MLFLOW_TRACKING_URI=https://dagshub.com/FahadKamran2001/project.mlflow
+export MLFLOW_TRACKING_USERNAME=FahadKamran2001
+export MLFLOW_TRACKING_PASSWORD=df259bdd7fb874eb28fc3d5745c2************
+
+8. go to mlflow ui from dagshub and create the experiment named 'project' which is the same name used in the code
+9. https://dagshub.com/FahadKamran2001/project.mlflow anyone can view my models and experiment data using this link (it requires the github action to execute main.py to generate contents for it
+
+
+********************************************************************************************************************************
+docker deployment of model
+********************************************************************************************************************************
+write up Dockerfile
+
+######################################################
+write up Dockerfile (DOCKERFILE)
+######################################################
+# Use an official Python runtime as a parent image
+FROM python:3.10-slim
+
+# Set the working directory to /app
+WORKDIR /app
+
+# Copy the current directory contents into the container at /app
+COPY . /app
+
+# Install any needed packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose the port the app runs on
+EXPOSE 5000
+
+# Define environment variable for MLflow tracking URI
+ENV MLFLOW_TRACKING_URI https://dagshub.com/FahadKamran2001/project.mlflow
+
+# Set the entry point to your script that loads and serves the MLflow model
+CMD ["python", "app.py"]
+
+
+-- to run the docker container enter following 
+docker run -p 5000:5000 fahadkamran2001/random-forest-app:latest
+
+
+######################################################
+create flask application (app.py) (use mlflow uri for model fetch)
+######################################################
+
+from flask import Flask, render_template, request
+import pandas as pd
+import mlflow.sklearn
+
+app = Flask(__name__)
+
+#load mlflow registered model (random-forest-best model of latest version)
+mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
+# Load the latest version of the registered model
+model = mlflow.sklearn.load_model("models:/random-forest-best/latest")
+
+@app.route('/')
+def index():
+    return render_template('app/index.html')
+
+@app.route('/predict', methods=['GET'])
+def predict():
+    # Get the data from the form
+    timestamp = request.args.get('timestamp')
+    machine_id = request.args.get('machine_id')
+    sensor_id = request.args.get('sensor_id')
+    
+    # From timeframe, extract hour, day of week and month
+    timestamp = pd.to_datetime(timestamp)
+    hour = timestamp.hour
+    day_of_week = timestamp.dayofweek
+    month = timestamp.month
+    
+    # Create a pandas DataFrame with the input values
+    data = pd.DataFrame({
+        'Machine_ID_Machine_1': [1 if machine_id == 'Machine_1' else 0],
+        'Machine_ID_Machine_2': [1 if machine_id == 'Machine_2' else 0],
+        'Machine_ID_Machine_3': [1 if machine_id == 'Machine_3' else 0],
+        'Machine_ID_Machine_4': [1 if machine_id == 'Machine_4' else 0],
+        'Machine_ID_Machine_5': [1 if machine_id == 'Machine_5' else 0],
+        'Sensor_ID_Sensor_1': [1 if sensor_id == 'Sensor_1' else 0],
+        'Sensor_ID_Sensor_2': [1 if sensor_id == 'Sensor_2' else 0],
+        'Sensor_ID_Sensor_3': [1 if sensor_id == 'Sensor_3' else 0],
+        'Hour': [hour],
+        'DayOfWeek': [day_of_week],
+        'Month': [month]
+    })
+    
+    # Make the prediction using the pre-trained model
+    prediction = model.predict(data)[0]
+    
+    # Render the result template with the prediction
+    return render_template('app/result.html', prediction=prediction)
+
+if __name__ == '__main__':
+    app.run(debug=True)
+
+
+######################################################
+create index page of website for entry (index.html)
+######################################################
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Parameter Selection</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #008080;
+        }
+
+        form {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #008080;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 16px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        input[type="submit"] {
+            background-color: #008080;
+            color: #fff;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        input[type="submit"]:hover {
+            background-color: #006666;
+        }
+    </style>
+</head>
+<body>
+    <h1>Parameter Selection</h1>
+    <form action="/predict" method="get">
+        <label for="timestamp">Timestamp:</label>
+        <input type="text" id="timestamp" name="timestamp"><br><br>
+        
+        <label for="machine_id">Machine ID:</label>
+        <select id="machine_id" name="machine_id">
+            <option value="Machine_1">Machine 1</option>
+            <option value="Machine_2">Machine 2</option>
+            <option value="Machine_3">Machine 3</option>
+            <option value="Machine_4">Machine 4</option>
+            <option value="Machine_5">Machine 5</option>
+        </select><br><br>
+        
+        <label for="sensor_id">Sensor ID:</label>
+        <select id="sensor_id" name="sensor_id">
+            <option value="Sensor_1">Sensor 1</option>
+            <option value="Sensor_2">Sensor 2</option>
+            <option value="Sensor_3">Sensor 3</option>
+        </select><br><br>
+        
+        <input type="submit" value="Predict">
+    </form>
+</body>
+</html>
+
+######################################################
+create result page to display predicted output (results.html)
+######################################################
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Result</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            margin: 20px;
+        }
+
+        h1 {
+            color: #008080;
+        }
+
+        p {
+            font-size: 18px;
+            color: #333;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Result</h1>
+    <p>Prediction: {{ prediction }}</p>
+</body>
+</html>
+
+######################################################
+for build and deployment of dockerfile, check (project-execution.yaml)
+######################################################
+
+
+********************************************************************************************************************************
+monitoring of concept drift
+********************************************************************************************************************************
+import mlflow
+from mlflow import MlflowClient, pyfunc
+import subprocess
+import pandas as pd
+from preprocess import preprocess_data
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score 
+
+def fetch_model():
+    model_name = "random-forest-best"
+    client = MlflowClient(tracking_uri="https://dagshub.com/FahadKamran2001/project.mlflow")
+    mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
+    model_metadata = client.get_latest_versions(model_name, stages=["None"])
+    latest_model_version = model_metadata[0].version
+    
+    # Load the model as a PyFuncModel.
+    model = pyfunc.load_model(f"models:/{model_name}/{latest_model_version}")
+    return model
+
+def fetch_data(data_file_path = 'dummy_sensor_data.csv'): 
+    data = pd.read_csv(data_file_path)
+    data = preprocess_data(data)
+    return data
+
+def save_metrics(mae, r2, mse):
+    # Generate a pd dataframe to store the metrics
+    metrics = pd.DataFrame(columns=['MAE', 'R2', 'MSE'])
+    # Add the metrics to the dataframe
+    metrics.loc[0] = [mae, r2, mse]
+    # if metrics.csv does not exist, create it, else append the metrics to it
+    try:
+        existing_metrics = pd.read_csv('metrics.csv')
+        updated_metrics = pd.concat([existing_metrics, metrics], ignore_index=True)
+        updated_metrics.to_csv('metrics.csv', index=False)
+    except FileNotFoundError:
+        metrics.to_csv('metrics.csv', index=False)
+    
+def monitor_model():
+    #Get the latest model from mlflow
+    model = fetch_model()
+    #Get the latest data from the data file
+    data = fetch_data()
+    #Evaluate model performance on the latest data
+    predictions = model.predict(data)
+    #Calculate error metrics
+    mae = mean_absolute_error(data['Reading'], predictions)
+    r2 = r2_score(data['Reading'], predictions)
+    mse = mean_squared_error(data['Reading'], predictions)
+    save_metrics(mae, r2, mse)
+    # Compare error metrics with threshold
+    if mae > 16 or mse > 500:
+        print("true")
+    else:
+        print("false")
+
+    
+if __name__ == '__main__':
+    monitor_model()
+    
+##########################
+for its execution usage, check project-execution.yaml
+##########################
+
+********************************************************************************************************************************
+retrain code (main.py)
+********************************************************************************************************************************
+import pandas as pd
+import numpy as np
+import subprocess
+import dvc
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.model_selection import train_test_split, GridSearchCV
+from sklearn.metrics import mean_squared_error, mean_absolute_error, r2_score 
+from mlflow.models import infer_signature
+import mlflow.sklearn, mlflow
+from mlflow import MlflowClient
+from preprocess import preprocess_data
+
+def load_data():
+    # Load the data from the csv file function
+    data = pd.read_csv('dummy_sensor_data.csv')
+    return data
+
+def start():
+    print("Simulate Sensor Data Generation? (y/n)")
+    choice = 'n'
+    if choice == 'y' :
+        subprocess.call(['python', 'generate_data.py'])
+    else:
+        print("Skipping data generation...")
+    #Loading the data
+    print("*****Loading data*****")
+    initial_data = load_data()
+    print(initial_data.head())
+    
+    #Preprocessing the data
+    print("*****Preprocessing the data*****")
+    processed_data = preprocess_data(initial_data)
+    print(processed_data.head())
+    processed_data.to_csv('processed_data.csv', index=False)
+    
+    #Splitting the data into train and test
+    print("*****Splitting the data into train and test*****")
+    # Split the dataset into features (X) and target variable (y)
+    X = processed_data.drop(['Timestamp', 'Reading'], axis=1)
+    y = processed_data['Reading']
+    
+    # Split the data into training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    print("*****Starting MLFlow Run*****")
+    # Set the artifact_path to location where experiment artifacts will be saved
+    artifact_path = "model"
+    # Set the run name to identify the experiment run
+    #run_name = "project"
+    # Connecting to the MLflow server
+    client = MlflowClient(tracking_uri="https://dagshub.com/FahadKamran2001/project.mlflow")
+    mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
+    random_forest_experiment = mlflow.set_experiment("project")
+    
+    mlflow.sklearn.autolog()
+    # Initiate a run, setting the `run_name` parameter
+    with mlflow.start_run():#run_name=run_name) as run:
+        
+        print("*****Training the model*****")
+        # Defining the parameters for the model 
+        params = {"n_estimators": 100, "random_state": 42, "max_depth": 5}
+        param_grid = {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [3, 5, 10, None] 
+        }
+        # rf = RandomForestRegressor(**params)
+        rf = GridSearchCV(RandomForestRegressor(), param_grid, cv=5, scoring='r2')
+        # Train the model
+        rf.fit(X_train, y_train)
+
+        print("*****Evaluating the model*****")
+        # Make predictions on the test set
+        y_pred = rf.predict(X_test)        
+        signature = infer_signature(X_test, y_pred)
+        # Evaluate the model using mean squared error
+        mse = mean_squared_error(y_test, y_pred)
+        mae = mean_absolute_error(y_test, y_pred)
+        r2 = r2_score(y_test, y_pred)
+        rmse = np.sqrt(mse)
+        score = rf.best_score_
+        print(f"Evaluation Errors: MSE[{mse}], MAE[{mae}], R2[{r2}], RMSE[{rmse}]")
+        mlflow_metrics = {
+            "mse": mse,
+            "mae": mae,
+            "r2": r2,
+            "rmse": rmse,
+            "score": score
+        }
+        # Log the parameters usend for the model fit
+        #mlflow.log_params(params)
+        mlflow.log_params(param_grid)
+        # Log the error metrics that were calculated during validation
+        mlflow.log_metrics(mlflow_metrics)
+        # Log an instance of the trained model for later use
+        mlflow.sklearn.log_model(sk_model=rf, input_example=X_test, artifact_path=artifact_path)
+    
+    print("*****Deploy Best Model*****")
+    print("Do you want to deploy the best model? (y/n)")
+    choice = 'y'
+    if choice != 'n':
+        print("Deploying the best model")
+        best_model = rf.best_estimator_
+        best_params = rf.best_params_
+        # Get the best model from the MLflow experiment
+        best_run = client.search_runs(
+            experiment_ids=random_forest_experiment.experiment_id,
+            order_by=["metrics.training_mse ASC"],
+            max_results=1,
+        )[0]
+        print("Best Run:", best_run.info.run_id)
+        # Clear app/best_model folder if it exists
+        subprocess.call(['rm', '-rf', 'app/best_model'])
+        # Saving the best model, overwriting the previous best model
+        # saving best_run as a pickle file
+        mlflow.sklearn.save_model(best_model, "app/best_model")
+        # Register the best model with MLflow
+        mlflow.sklearn.log_model(
+            sk_model=best_model,
+            artifact_path="sklearn-model",
+            signature= signature,
+            registered_model_name="random-forest-best"
+        )
+        print("Model deployed successfully!")
+    else:
+        print("Skipping model deployment")
+if __name__ == '__main__':
+    start()
+    
+
