@@ -11,7 +11,6 @@ def fetch_model():
     mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
     model_metadata = client.get_latest_versions(model_name, stages=["None"])
     latest_model_version = model_metadata[0].version
-    #print(latest_model_version)
     
     # Load the model as a PyFuncModel.
     model = pyfunc.load_model(f"models:/{model_name}/{latest_model_version}")
@@ -23,7 +22,6 @@ def fetch_data(data_file_path = 'dummy_sensor_data.csv'):
     return data
 
 def save_metrics(mae, r2, mse):
-    #print("Saving metrics for future analysis...")
     # Generate a pd dataframe to store the metrics
     metrics = pd.DataFrame(columns=['MAE', 'R2', 'MSE'])
     # Add the metrics to the dataframe
@@ -47,13 +45,12 @@ def monitor_model():
     mae = mean_absolute_error(data['Reading'], predictions)
     r2 = r2_score(data['Reading'], predictions)
     mse = mean_squared_error(data['Reading'], predictions)
-    #print("Model error metrics: MAE:[{}], R2:[{}], MSE:[{}]".format(mae, r2, mse))
     save_metrics(mae, r2, mse)
     # Compare error metrics with threshold
-    #if mae > 16 or mse > 500:
-    #print("Model performance degraded! Retraining model.")
-    print("true")
-    #print(f"::set-output name=condition_result::{str(text).lower()}")
+    if mae > 16 or mse > 500:
+        print("true")
+    else:
+        print("false")
 
     
 if __name__ == '__main__':
