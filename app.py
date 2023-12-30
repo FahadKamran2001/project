@@ -8,9 +8,9 @@ app = Flask(__name__)
 with open('best_model/model.pkl', 'rb') as file:
     model = pickle.load(file)
 
-@app.route('/App')
+@app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('app/index.html')
 
 @app.route('/predict', methods=['GET'])
 def predict():
@@ -44,7 +44,7 @@ def predict():
     prediction = model.predict(data)[0]
     
     # Render the result template with the prediction
-    return render_template('result.html', prediction=prediction)
+    return render_template('app/result.html', prediction=prediction)
 
 if __name__ == '__main__':
     app.run(debug=True)
