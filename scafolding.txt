@@ -1,0 +1,21 @@
+project
+├── .dvc
+├── .github
+│   └── workflows
+├── app
+├── .dvcignore
+├── .gitattributes
+├── .gitignore
+├── Dockerfile
+├── README.md
+├── app.py
+├── dummy_sensor_data.csv.dvc
+├── dvc-pipeline.yml
+├── main.py
+├── monitor.py
+├── preprocess.py
+├── random_data.py
+├── requirements.txt
+├── scafolding.txt
+├── steps.txt
+└── tasks.txt
