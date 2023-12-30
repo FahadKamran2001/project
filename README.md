@@ -1,5 +1,5 @@
 # Project README
-
+[<img src="https://github.com/{{ FahadKamran2001 }}.png" width="60px;"/><br /><sub><ahref="https://github.com/{{ contributor }}">{{ contributor }}</a></sub>](https://github.com/{{ FahadKamran2001 }}/{{ project }}
 ## DVC Setup
 
 ### Install DVC on Windows
@@ -61,15 +61,22 @@
 
 ## Requirements.txt
 
-```plaintext
-pandas==2.1.4
-numpy==1.26.2
-jinja2==3.1.2
-flask==3.0.0
-mlflow==2.9.2
-scikit-learn==1.3.2
-xgboost==2.0.3
-dvc[gdrive]
+[requirements.txt](https://github.com/FahadKamran2001/project/blob/main/requirements.txt)
+
+## Workflow
+-The workflow consists of the the automatic DVC setup, Concept Drift Checking, and Auto Retrain & Deployment
+[project-execution.yml](https://github.com/FahadKamran2001/project/blob/main/.github/workflows/project-execution.yml)
+
+## Preprocessing Function
+[preprocess.py](https://github.com/FahadKamran2001/project/blob/main/preprocess.py)
+
+## Retraining Code
+[main.py](https://github.com/FahadKamran2001/project/blob/main/main.py)
+
+## Tasks Implementation
+[task.txt](https://github.com/FahadKamran2001/project/blob/main/tasks.txt)
+
+
 
 
 
