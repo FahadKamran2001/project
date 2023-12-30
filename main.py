@@ -87,7 +87,8 @@ def start():
             "score": score
         }
         # Log the parameters usend for the model fit
-        # mlflow.log_params(params)
+        #mlflow.log_params(params)
+        mlflow.log_params(param_grid)
         # Log the error metrics that were calculated during validation
         mlflow.log_metrics(mlflow_metrics)
         # Log an instance of the trained model for later use
