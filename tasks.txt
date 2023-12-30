@@ -1,4 +1,4 @@
 TASKS ACCOMPLISHED BY EACH MEMBER
-1. i200983 (Fahad Kamran) - DVC Setup, Requirements.txt, tasks.txt, python_libraries_installation.yaml, dvc-pipeline.yaml, preprocess.py, main.py
+1. i200983 (Fahad Kamran) - DVC Setup, Requirements.txt, tasks.txt, project-execution.yaml, dvc-pipeline.yaml, preprocess.py, main.py train.yaml
 2. i200977 (Ahmed Munir) - Flask application for model, model deployment using Docker Container
-3. i190600 (Atif Munir) -
+3. i190600 (Atif Munir) - Concept Drift Monitoring
