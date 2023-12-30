@@ -46,7 +46,7 @@ def start():
     # Set the artifact_path to location where experiment artifacts will be saved
     artifact_path = "model"
     # Set the run name to identify the experiment run
-    run_name = "Project"
+    #run_name = "project"
     # Connecting to the MLflow server
     client = MlflowClient(tracking_uri="https://dagshub.com/FahadKamran2001/project.mlflow")
     mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
@@ -54,7 +54,7 @@ def start():
     
     mlflow.sklearn.autolog()
     # Initiate a run, setting the `run_name` parameter
-    with mlflow.start_run(run_name=run_name) as run:
+    with mlflow.start_run():#run_name=run_name) as run:
         
         print("*****Training the model*****")
         # Defining the parameters for the model 
