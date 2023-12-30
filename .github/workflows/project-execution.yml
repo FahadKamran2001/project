@@ -1,10 +1,8 @@
 name: Python Application
 
 on:
-  push:
-    branches: [ "main","i200983","i200977","i190600" ]
-  pull_request:
-    branches: [ "main","i200983","i200977","i190600" ]
+  schedule:
+    - cron: '0 0 * * *'
 
 permissions:
   contents: read
@@ -44,23 +42,6 @@ jobs:
         dvc add dummy_sensor_data.csv
     - name: Push data back to gdrive
       run: 'dvc push -r storage'
-    - name: Execute Mlflow training and Data Gather
-      run: |
-        export MLFLOW_TRACKING_URI=${{secrets.MLFLOW_TRACKING_URI}}
-        export MLFLOW_TRACKING_USERNAME=${{secrets.MLFLOW_TRACKING_USERNAME}}
-        export MLFLOW_TRACKING_PASSWORD=${{secrets.MLFLOW_TRACKING_PASSWORD}}
-        python main.py
-    - name: Login to Docker
-      uses: docker/login-action@v1
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
-    - name: Build Docker Image
-      run: docker build . --file Dockerfile --tag fahadkamran2001/random-forest-app:latest
-    - name: Push Docker Image
-      run: |
-        docker login -u fahadkamran2001 -p ${{ secrets.DOCKER_PASSWORD }}
-        docker push fahadkamran2001/random-forest-app:latest
     - name: Concept Drift Monitoring (Re-train if necessary)
       run: |
         export MLFLOW_TRACKING_URI=${{secrets.MLFLOW_TRACKING_URI}}
