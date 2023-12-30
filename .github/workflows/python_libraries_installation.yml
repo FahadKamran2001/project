@@ -21,14 +21,33 @@ jobs:
     - name: Install dependencies
       run: |
         pip install -r requirements.txt
-    - name: dvc setup
+    - name: Setup DVC
+      uses: iterative/setup-dvc@v1
+    
+    - name: Setup Google Drive credentials
+      env:
+        GDRIVE_CLIENT_ID: ${{ secrets.GDRIVE_CLIENT_ID }}
+        GDRIVE_CLIENT_SECRET: ${{ secrets.GDRIVE_LINK}}
+        GDRIVE_SERVICE_ACCOUNT_JSON: ${{ secrets.GDRIVE_API }}
       run: |
-        dvc --version
-        dvc remote add -f myremote gdrive://1ZJZmaYaA77kOh0IdPIOzcRQDEGwGnCJO
+        echo "$GDRIVE_SERVICE_ACCOUNT_JSON" > dvc-remote-connections.json
+        dvc remote modify storage gdrive_client_id $GDRIVE_CLIENT_ID
+        dvc remote modify storage gdrive_client_secret $GDRIVE_CLIENT_SECRET
+        dvc remote modify storage gdrive_service_account_json_file_path dvc-remote-connections.json
+
+    - name: Pull Data from DVC
+      run: |
         dvc pull
+    - name: Add More Data to DVC    
+      run: |
         python random_data.py
-        dvc add data/dummy_sensor_data.csv
-        'dvc push -r myremote'
+        dvc add dummy_sensor_data.csv
+    - name: Push data back to gdrive
+      run: 'dvc push -r storage'
     - name: Execute Mlflow training and Data Gather
-      run: python main.py
+      run: |
+        echo "export MLFLOW_TRACKING_URI=${{secrets.MLFLOW_TRACKING_URI}}" >> $GITHUB_ENV
+        echo "export MLFLOW_TRACKING_USERNAME=${{secrets.MLFLOW_TRACKING_USERNAME}}" >> $GITHUB_ENV
+        echo "export MLFLOW_TRACKING_PASSWORD=${{secrets.MLFLOW_TRACKING_PASSWORD}}" >> $GITHUB_ENV
+        python main.py
       
