@@ -50,7 +50,7 @@ def start():
     # Connecting to the MLflow server
     client = MlflowClient(tracking_uri="https://dagshub.com/FahadKamran2001/project.mlflow")
     mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
-    random_forest_experiment = mlflow.set_experiment("Project")
+    random_forest_experiment = mlflow.set_experiment("project")
     
     mlflow.sklearn.autolog()
     # Initiate a run, setting the `run_name` parameter
