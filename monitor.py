@@ -52,7 +52,7 @@ def monitor_model():
     # Compare error metrics with threshold
     #if mae > 16 or mse > 500:
     print("Model performance degraded! Retraining model.")
-    subprocess.call(['cat', 'train.yaml'])
+   subprocess.run('cat train.yaml', shell=True)
     
 if __name__ == '__main__':
     monitor_model()
