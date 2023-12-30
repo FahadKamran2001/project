@@ -1,5 +1,5 @@
 # Project README
-[<img src="https://github.com/{{ FahadKamran2001 }}.png" width="60px;"/><br /><sub><ahref="https://github.com/{{ contributor }}">{{ contributor }}</a></sub>](https://github.com/{{ FahadKamran2001 }}/{{ project }}
+[<img src="https://github.com/{{ FahadKamran2001 }}.png" width="60px;"/><br /><sub><ahref="https://github.com/{{ Fahadkamran2001 }}">{{ FahadKamran2001 }}</a></sub>](https://github.com/{{ FahadKamran2001 }}/{{ project }}
 ## DVC Setup
 
 ### Install DVC on Windows
