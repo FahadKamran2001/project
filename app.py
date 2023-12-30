@@ -1,12 +1,13 @@
 from flask import Flask, render_template, request
 import pandas as pd
-import pickle
+import mlflow.sklearn
 
 app = Flask(__name__)
 
-# Load the pre-trained model
-with open('best_model/model.pkl', 'rb') as file:
-    model = pickle.load(file)
+#load mlflow registered model (random-forest-best model of latest version)
+mlflow.set_tracking_uri("https://dagshub.com/FahadKamran2001/project.mlflow")
+# Load the latest version of the registered model
+model = mlflow.sklearn.load_model("models:/random-forest-best/latest")
 
 @app.route('/')
 def index():
