@@ -48,4 +48,4 @@ def predict():
     return render_template('app/result.html', prediction=prediction)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False)
